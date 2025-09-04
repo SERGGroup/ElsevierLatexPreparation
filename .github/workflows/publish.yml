@@ -5,7 +5,7 @@ on:
     types: [created]
   push:
     tags:
-      - 'v*'
+      - '*'  # triggers on any tag push
 
 jobs:
   build-and-publish:
@@ -17,26 +17,31 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install build twine toml
 
       - name: Update version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.ref_type == 'tag'
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Tag detected: $GITHUB_REF_NAME"
+          # Strip leading 'v' if present, otherwise keep tag as-is
+          VERSION=${GITHUB_REF_NAME#v}
           echo "Updating pyproject.toml version to $VERSION"
           python - <<EOF
           import toml
-          path = "pyproject.toml"
+          from pathlib import Path
+          path = Path("pyproject.toml")
           data = toml.load(path)
-          data["project"]["version"] = VERSION
-          with open(path, "w") as f:
-              toml.dump(data, f)
+          data["project"]["version"] = "$VERSION"
+          toml.dump(data, path.open("w"))
           EOF
+
+      - name: Clean old builds
+        run: rm -rf dist build *.egg-info
 
       - name: Build package
         run: python -m build
@@ -45,5 +50,4 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          python -m twine upload dist/* --verbose
+        run: python -m twine upload dist/* --verbose
