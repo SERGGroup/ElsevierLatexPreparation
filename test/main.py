@@ -1,3 +1,3 @@
-from main_code import run_gui
+from elsevier_latex_preparation import run_gui
 
 run_gui()

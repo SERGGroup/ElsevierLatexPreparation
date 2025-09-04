@@ -2,5 +2,5 @@
 /.idea
 /.DS_Store
 /__pycache__/
-/main_code/__pycache__
+/elsevier_latex_preparation/__pycache__
 *.pyc
