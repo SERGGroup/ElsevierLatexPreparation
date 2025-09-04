@@ -76,9 +76,21 @@ def __show_info(title, message):
     root.after(0, lambda: messagebox.showinfo(title, message))
 
 
-def __show_error(title, message):
-    """Show error message box safely from threads."""
-    root.after(0, lambda: messagebox.showerror(title, message))
+def __show_error(title, message, show_box=True):
+
+    if not show_box:
+        root.after(0, lambda: messagebox.showerror(title, message))
+
+    else:
+        new_window = tk.Toplevel(root)
+        new_window.title("Error:" + title)
+        new_window.geometry("400x300")
+        new_window.resizable(True, True)
+
+        text_widget = tk.Text(new_window, wrap="none")
+        text_widget.pack(expand=True, fill="both", padx=5, pady=5)
+        text_widget.insert("end", message)
+        text_widget.config(state="disabled")  # read-only
 
 
 # -------------------- Conversion --------------------
@@ -88,16 +100,17 @@ def __convert_threaded():
     destination_folder = destination_folder_entry.get()
 
     if not os.path.isfile(main_file):
-        __show_error("Error", "Please select a valid main file.")
+        __show_error("Error", "Please select a valid main file.", show_box=False)
         return
     if not os.path.isdir(destination_folder):
-        __show_error("Error", "Please select a valid destination folder.")
+        __show_error("Error", "Please select a valid destination folder.", show_box=False)
         return
 
     def task():
         try:
             merge_latex_and_move_ref(
                 main_file, destination_folder,
+                allow_broad_search=allow_broad_var.get(),
                 progress_callback=__update_progress,
                 files_copied_counter_callback=__update_counters,
                 merge_tracker_callback=__update_mergers
@@ -105,7 +118,7 @@ def __convert_threaded():
             __update_progress(100)
             __show_info("Success", "Conversion completed successfully!")
         except Exception as e:
-            __show_error("Error", f"An error occurred: {e}")
+            __show_error("Error On Conversion", f"An error occurred: {e}")
         finally:
             __update_progress(0)
 
@@ -134,7 +147,7 @@ def run_gui(ttk_theme="Breeze"):
 
     global root, main_file_entry, destination_folder_entry
     global progress, progress_label, bold_font, italic_font
-    global png_label, bib_label, other_label, title_label, merged_label
+    global png_label, bib_label, other_label, title_label, merged_label, allow_broad_var
     global copied_png_files, copied_bib_files, copied_other_files, merged_files_list
 
     root = ThemedTk(theme=ttk_theme)
@@ -187,7 +200,7 @@ def run_gui(ttk_theme="Breeze"):
     other_label.grid(row=0, column=3)
     other_label.bind("<Button-1>", lambda e: __open_file_list("Copied Other", copied_other_files))
 
-    # Progress bar
+    # -------------------- Progress Bar -----------------------------
     style = ttk.Style()
     style.configure("TProgressbar", thickness=20)
     progress = ttk.Progressbar(root, orient="horizontal", mode="determinate", style="TProgressbar")
@@ -196,7 +209,20 @@ def run_gui(ttk_theme="Breeze"):
     progress_label = tk.Label(root, text="0%", font=italic_font)
     progress_label.grid(row=4, column=2, padx=5, pady=5, sticky="w")
 
+    # -------------------- Run Calculation Section --------------------
+    calculate_frame = tk.Frame(root)
+    calculate_frame.grid(row=5, column=0, columnspan=3, ipadx=50, pady=(5, 5))
+    calculate_frame.grid_columnconfigure((0, 1, 2), weight=1)
+
+    # Allow broad search checkbox
+    allow_broad_var = tk.BooleanVar(value=False)
+    ttk.Checkbutton(
+        calculate_frame,
+        text="Allow broad research",
+        variable=allow_broad_var
+    ).grid(row=1, column=0, pady=10)
+
     # Convert button
-    ttk.Button(root, text="Convert", command=__convert_threaded).grid(row=5, column=0, columnspan=3, pady=10)
+    ttk.Button(calculate_frame, text="Convert", command=__convert_threaded).grid(row=1, column=2, pady=10)
 
     root.mainloop()

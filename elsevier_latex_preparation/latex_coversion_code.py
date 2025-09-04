@@ -2,6 +2,9 @@ import shutil
 import os
 import re
 
+# Global ignore extensions
+IGNORE_EXTENSIONS = {".bst", ".ins", ".cls", ".dtx", ".tex"}
+
 
 def merge_latex_text(content, main_file_dir, merge_updater_callback: callable, is_main=False):
     """
@@ -37,7 +40,6 @@ def merge_latex_text(content, main_file_dir, merge_updater_callback: callable, i
         absolute_path = os.path.join(main_file_dir, relative_path)
 
         if os.path.exists(absolute_path):
-
             merge_updater_callback(relative_path)
 
             with open(absolute_path, "r", encoding="utf-8") as included_file:
@@ -54,13 +56,65 @@ def merge_latex_text(content, main_file_dir, merge_updater_callback: callable, i
     return content.strip()
 
 
+def find_file(base_dir, file_ref, allow_broad_search=False):
+    """
+    Search for a file in base_dir. Returns the absolute path if found, else None.
+
+    Parameters:
+    - base_dir: str, the root directory to start searching from
+    - file_ref: str, the filename or path referenced in LaTeX
+    - allow_broad_search: bool, if True, search recursively through all subdirectories
+
+    Returns:
+    - str or None: Absolute path to the file if found, otherwise None
+    """
+
+    # Remove leading/trailing whitespace from the file reference
+    file_ref = file_ref.strip()
+
+    # Replace forward slashes with OS-specific separator
+    base_name = file_ref.replace("/", os.sep)
+
+    # Split the filename and extension
+    file_name, ext = os.path.splitext(os.path.basename(base_name))
+    has_extension = ext != ""  # Flag if the file reference includes an extension
+
+    if not allow_broad_search:
+        # Direct search: check the path relative to base_dir
+        candidate_path = os.path.join(base_dir, base_name)
+
+        # If the exact file exists and is not in ignored extensions, return it
+        if os.path.isfile(candidate_path) and ext not in IGNORE_EXTENSIONS:
+            return candidate_path
+
+        # If no extension is provided, search in the directory for a matching base name
+        elif not has_extension and os.path.isdir(os.path.dirname(candidate_path)):
+            for f in os.listdir(os.path.dirname(candidate_path)):
+                f_base, f_ext = os.path.splitext(f)
+                # Match base name, but skip ignored extensions
+                if f_base == file_name and f_ext not in IGNORE_EXTENSIONS:
+                    return os.path.join(os.path.dirname(candidate_path), f)
+
+    else:
+        # Broad search: recursively walk the directory tree
+        for root, _, files in os.walk(base_dir):
+            for f in files:
+                f_base, f_ext = os.path.splitext(f)
+                # Match the file based on whether extension is specified
+                if (has_extension and f == os.path.basename(base_name) or
+                    not has_extension and f_base == file_name) and f_ext not in IGNORE_EXTENSIONS:
+                    return os.path.join(root, f)
+
+    # Return None if file not found
+    return None
+
+
 def merge_latex_and_move_ref(
-
-        main_file, destination_folder,
-        progress_callback: callable=None,
-        files_copied_counter_callback: callable=None,
-        merge_tracker_callback: callable=None
-
+    main_file, destination_folder,
+    allow_broad_search: bool = False,
+    progress_callback: callable = None,
+    files_copied_counter_callback: callable = None,
+    merge_tracker_callback: callable = None
 ):
     """
     Merge a main LaTeX file with all its \input included files, copying all referenced resources.
@@ -78,30 +132,23 @@ def merge_latex_and_move_ref(
     if not os.path.exists(destination_folder):
         os.makedirs(destination_folder)
 
-    # Read main LaTeX file
     with open(main_file, "r", encoding="utf-8") as f:
         content = f.read()
 
     merged_files = []
 
     def merge_updater_callback(file_path):
-
         if merge_tracker_callback and file_path not in merged_files:
             merged_files.append(file_path)
             merge_tracker_callback(merged_files)
 
-    # Resolve \input commands recursively
     content = merge_latex_text(
-
         content, os.path.dirname(main_file),
         is_main=True, merge_updater_callback=merge_updater_callback
-
     )
 
-    # Regex to find LaTeX file references (e.g., \includegraphics, bibliography)
     regex_paths = re.compile(r"\\(\w+)(?:\[(.*?)\])?(?<![_^]){(.+?)}")
 
-    # Ignore these LaTeX commands (no external file)
     ignore_command_list = [
         'documentclass', 'usepackage', 'newcommand', 'renewcommand', 'setlength',
         'nompreamble', 'nompostamble', 'color', 'begin', 'title', 'author',
@@ -110,93 +157,46 @@ def merge_latex_and_move_ref(
         'textbf', 'textit', 'vspace', 'hspace', 'item', 'maketitle', 'footnote',
     ]
 
-    ignore_extensions = {".bst", ".ins", ".cls", ".dtx", ".tex"}  # do not copy these
-
-    controlled_commands = []
-    controlled_options = []
-    controlled_content = []
-    ignored_commands = []
-
     files_copied = []
     base_dir = os.path.dirname(main_file)
-
     matches = list(regex_paths.finditer(content))
     total_matches = len(matches)
 
-    # Iterate over all LaTeX commands referencing files
     for idx, match in enumerate(matches, 1):
         command = match.group(1)
-        ignore_command = command in ignore_command_list
+        file_ref = match.group(3).strip()
+        if command in ignore_command_list:
+            continue
 
-        if ignore_command:
-            if command not in ignored_commands:
-                ignored_commands.append(command)
-        else:
-            # Keep track of controlled commands and content
-            if command not in controlled_commands:
-                controlled_commands.append(command)
-                controlled_content.append([match.group(3)])
-                controlled_options.append([match.group(2)])
-            else:
-                index = controlled_commands.index(command)
-                controlled_content[index].append(match.group(3))
-                controlled_options[index].append(match.group(2))
+        absolute_path = find_file(base_dir, file_ref, allow_broad_search)
 
-            # Determine file path
-            base_name = match.group(3).replace("/", os.sep)
-            file_name, ext = os.path.splitext(os.path.basename(base_name))
-            has_extension = ext != ""
+        if absolute_path:
+            dest_file_name = os.path.basename(absolute_path)
+            destination_path = os.path.join(destination_folder, dest_file_name)
 
-            # Search in directory tree
-            for __root, _, files in os.walk(base_dir):
-                for file in files:
+            # Avoid overwriting
+            i = 1
+            orig_base, orig_ext = os.path.splitext(dest_file_name)
+            while os.path.isfile(destination_path):
+                dest_file_name = f"{orig_base}_{i}{orig_ext}"
+                destination_path = os.path.join(destination_folder, dest_file_name)
+                i += 1
 
-                    file_base_name, file_extension = os.path.splitext(file)
+            shutil.copy(absolute_path, destination_path)
+            files_copied.append(dest_file_name)
+            if files_copied_counter_callback:
+                files_copied_counter_callback(files_copied)
 
-                    if has_extension:
-                        found = os.path.basename(base_name) == file and file_extension not in ignore_extensions
-                    else:
-                        found = file_base_name == os.path.basename(base_name) and file_extension not in ignore_extensions
+            # Update LaTeX content
+            content = content.replace(file_ref, dest_file_name)
 
-                    if found:
-                        absolute_path = os.path.join(__root, file)
-                        destination_path = os.path.join(destination_folder, file)
+        if progress_callback:
+            progress_callback(idx / total_matches * 100)
 
-                        # Copy file if exists
-                        if os.path.isfile(absolute_path):
-
-                            files_copied.append(file)
-
-                            # modify file name if already exists
-                            i = 1
-                            orig_file_base = file_base_name
-                            while os.path.isfile(destination_path):
-                                file_base_name = f"{orig_file_base}_{i}"
-                                file = f"{file_base_name}{file_extension}"
-                                destination_path = os.path.join(destination_folder, file)
-                                i += 1
-
-                            shutil.copy(absolute_path, destination_path)
-
-                            # Optional callback with current copied files
-                            if files_copied_counter_callback:
-                                files_copied_counter_callback(files_copied)
-
-                            # Update LaTeX content to new path
-                            if has_extension:
-                                content = content.replace(match.group(3), os.path.basename(file))
-                            else:
-                                content = content.replace(match.group(3), file_base_name)
-                        break
-
-            # Update progress callback
-            if progress_callback:
-                progress_callback(idx / total_matches * 100)
-
-    # Write new main file to destination
-    new_file_name = os.path.join(destination_folder, os.path.basename(main_file))
-    with open(new_file_name, "w", encoding="utf-8") as f:
+    new_main_file = os.path.join(destination_folder, os.path.basename(main_file))
+    with open(new_main_file, "w", encoding="utf-8") as f:
         f.write(content)
 
     print(f"LaTeX files merged and resources moved to {destination_folder}.")
     return files_copied
+
