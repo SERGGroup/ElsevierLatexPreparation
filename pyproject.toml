@@ -9,7 +9,7 @@ description = "Merge LaTeX files and resources for Elsevier Editorial Manager su
 authors = [
     {name = "Pietro Ungar", email = "pietro.ungar@unifi.it"}
 ]
-readme = "README.md"
+readme = "readme.md"
 requires-python = ">=3.7"
 license = {text = "MIT"}
 classifiers = [
@@ -23,3 +23,9 @@ dependencies = [
 
 [project.scripts]
 latex-gui = "elsevier_latex_preparation.latex_coversion_code:run_gui"
+
+# URLs
+[project.urls]
+Homepage = "https://github.com/yourusername/latex-merger"
+Repository = "https://github.com/yourusername/latex-merger"
+Bug Tracker = "https://github.com/yourusername/latex-merger/issues"
