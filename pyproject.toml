@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "elsevier-latex-preparation"
-version = "0.1.0"
+version = "0.0.0"
 description = "Merge LaTeX files and resources for Elsevier Editorial Manager submission"
 authors = [
     {name = "Pietro Ungar", email = "pietro.ungar@unifi.it"}

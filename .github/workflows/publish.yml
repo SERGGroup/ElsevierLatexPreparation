@@ -29,7 +29,14 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "Updating pyproject.toml version to $VERSION"
-          sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.toml
+          python - <<EOF
+          import toml
+          path = "pyproject.toml"
+          data = toml.load(path)
+          data["project"]["version"] = VERSION
+          with open(path, "w") as f:
+              toml.dump(data, f)
+          EOF
 
       - name: Build package
         run: python -m build
