@@ -33,7 +33,7 @@ and copies all referenced files into a flat destination folder. 🗂️️
 Run the GUI:
 
 ```python
-from latex_conversion_gui import run_gui
+from elsevier_latex_preparation import run_gui
 
 run_gui()
 ```
@@ -41,7 +41,7 @@ run_gui()
 ## Usage (Programmatic) 💻
 
 ```python
-from latex_conversion_gui import merge_latex_and_move_ref
+from elsevier_latex_preparation import merge_latex_and_move_ref
 
 # Path to the main LaTeX file
 main_file = "path/to/main.tex"
