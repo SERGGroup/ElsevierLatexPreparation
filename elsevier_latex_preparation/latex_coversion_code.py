@@ -150,6 +150,7 @@ def merge_latex_and_move_ref(
             # Search in directory tree
             for __root, _, files in os.walk(base_dir):
                 for file in files:
+
                     file_base_name, file_extension = os.path.splitext(file)
 
                     if has_extension:
@@ -160,10 +161,21 @@ def merge_latex_and_move_ref(
                     if found:
                         absolute_path = os.path.join(__root, file)
                         destination_path = os.path.join(destination_folder, file)
-                        files_copied.append(file)
 
                         # Copy file if exists
                         if os.path.isfile(absolute_path):
+
+                            files_copied.append(file)
+
+                            # modify file name if already exists
+                            i = 1
+                            orig_file_base = file_base_name
+                            while os.path.isfile(destination_path):
+                                file_base_name = f"{orig_file_base}_{i}"
+                                file = f"{file_base_name}{file_extension}"
+                                destination_path = os.path.join(destination_folder, file)
+                                i += 1
+
                             shutil.copy(absolute_path, destination_path)
 
                             # Optional callback with current copied files
