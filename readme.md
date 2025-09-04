@@ -22,11 +22,12 @@ and copies all referenced files into a flat destination folder. 🗂️️
   - Clickable counters that open a window showing copied files 👀  
 - Designed to produce a folder ready for **Elsevier Editorial Manager** ✅
 
-## Requirements ⚙️
+## Installation ️
+Can be installed via pip:
 
-- Python 3.x 🐍  
-- Standard libraries: `os`, `shutil`, `re`, `tkinter`  
-- `ttkthemes` for themed GUI 🎨  
+```bash 
+pip install elsevier-latex-preparation
+```
 
 ## Usage (GUI) 🖱️
 

@@ -25,6 +25,6 @@ dependencies = [
 latex-gui = "elsevier_latex_preparation.latex_coversion_code:run_gui"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/latex-merger"
-Repository = "https://github.com/yourusername/latex-merger"
-"Bug Tracker" = "https://github.com/yourusername/latex-merger/issues"
+Homepage = "https://github.com/SERGGroup/ElsevierLatexPreparation"
+Repository = "https://github.com/SERGGroup/ElsevierLatexPreparation"
+"Bug Tracker" = "https://github.com/SERGGroup/ElsevierLatexPreparation/issues"
