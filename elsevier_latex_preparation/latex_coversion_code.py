@@ -109,12 +109,50 @@ def find_file(base_dir, file_ref, allow_broad_search=False):
     return None
 
 
+def calculate_word_count(content):
+    """
+    Calculates word count excluding abstract, references, tables, and figures.
+    """
+    text = content
+
+    # Remove comments
+    text = re.sub(r"%.*", "", text)
+
+    # Exclude abstract, tables, figures, and bibliography environments
+    exclusions = [
+        r"\\begin\{abstract\}.*?\\end\{abstract\}",
+        r"\\begin\{table\*?\}.*?\\end\{table\*?\}",
+        r"\\begin\{figure\*?\}.*?\\end\{figure\*?\}",
+        r"\\begin\{thebibliography\}.*?\\end\{thebibliography\}"
+    ]
+
+    for pattern in exclusions:
+        text = re.sub(pattern, "", text, flags=re.DOTALL)
+
+    # Remove bibliography command
+    text = re.sub(r"\\bibliography\{.*?\}", "", text)
+
+    # Remove specific commands that shouldn't count (cite, ref, label)
+    text = re.sub(r"\\(cite|ref|label)\{.*?\}", "", text)
+
+    # Remove generic LaTeX commands
+    text = re.sub(r"\\[a-zA-Z@]+", " ", text)
+
+    # Remove special characters
+    text = re.sub(r"[\{\}\[\]\$\(\)\^\_\~]", " ", text)
+
+    # Split by whitespace and count
+    words = text.split()
+    return len(words)
+
+
 def merge_latex_and_move_ref(
     main_file, destination_folder,
     allow_broad_search: bool = False,
     progress_callback: callable = None,
     files_copied_counter_callback: callable = None,
-    merge_tracker_callback: callable = None
+    merge_tracker_callback: callable = None,
+    word_count_callback: callable = None
 ):
     """
     Merge a main LaTeX file with all its \input included files, copying all referenced resources.
@@ -125,6 +163,7 @@ def merge_latex_and_move_ref(
     - progress_callback: function, optional callback to report progress (0-100)
     - files_copied_counter_callback: function, optional callback to report list of copied files
     - merge_tracker_callback: function, optional callback to track merged files
+    - word_count_callback: function, optional callback to report word count
 
     Returns:
     - list of copied files
@@ -193,10 +232,14 @@ def merge_latex_and_move_ref(
         if progress_callback:
             progress_callback(idx / total_matches * 100)
 
+    # Calculate word count
+    if word_count_callback:
+        count = calculate_word_count(content)
+        word_count_callback(count)
+
     new_main_file = os.path.join(destination_folder, os.path.basename(main_file))
     with open(new_main_file, "w", encoding="utf-8") as f:
         f.write(content)
 
     print(f"LaTeX files merged and resources moved to {destination_folder}.")
     return files_copied
-

@@ -71,6 +71,12 @@ def __update_mergers(merged_files):
     root.update_idletasks()
 
 
+def __update_word_count(count):
+    """Update the word count label."""
+    word_count_label.config(text=f"Words: {count}")
+    root.update_idletasks()
+
+
 def __show_info(title, message):
     """Show info message box safely from threads."""
     root.after(0, lambda: messagebox.showinfo(title, message))
@@ -113,7 +119,8 @@ def __convert_threaded():
                 allow_broad_search=allow_broad_var.get(),
                 progress_callback=__update_progress,
                 files_copied_counter_callback=__update_counters,
-                merge_tracker_callback=__update_mergers
+                merge_tracker_callback=__update_mergers,
+                word_count_callback=__update_word_count
             )
             __update_progress(100)
             __show_info("Success", "Conversion completed successfully!")
@@ -148,6 +155,7 @@ def run_gui(ttk_theme="Breeze"):
     global root, main_file_entry, destination_folder_entry
     global progress, progress_label, bold_font, italic_font
     global png_label, bib_label, other_label, title_label, merged_label, allow_broad_var
+    global word_count_label
     global copied_png_files, copied_bib_files, copied_other_files, merged_files_list
 
     root = ThemedTk(theme=ttk_theme)
@@ -178,7 +186,7 @@ def run_gui(ttk_theme="Breeze"):
     # -------------------- File counter --------------------
     counter_frame = tk.Frame(root)
     counter_frame.grid(row=3, column=1, padx=10, ipadx=50, pady=(5, 5))
-    counter_frame.grid_columnconfigure((0, 1, 2), weight=1)
+    counter_frame.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
 
     merged_files_list = []
     merged_label = tk.Label(counter_frame, text="Latex files: 0", font=italic_font, anchor="center", cursor="hand2")
@@ -199,6 +207,9 @@ def run_gui(ttk_theme="Breeze"):
     other_label = tk.Label(counter_frame, text="Other: 0", font=italic_font, anchor="center", cursor="hand2")
     other_label.grid(row=0, column=3)
     other_label.bind("<Button-1>", lambda e: __open_file_list("Copied Other", copied_other_files))
+
+    word_count_label = tk.Label(counter_frame, text="Words: 0", font=italic_font, anchor="center")
+    word_count_label.grid(row=0, column=4)
 
     # -------------------- Progress Bar -----------------------------
     style = ttk.Style()
